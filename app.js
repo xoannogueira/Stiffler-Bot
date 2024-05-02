@@ -14,9 +14,16 @@ import axios from 'axios';
 // Create an express app
 const app = express();
 
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const guildId = '722178220484460585';
 const channelId = '1225167896192356425';
 const hostId = '1235524838320508989';
+const roleId1 = '1235343578239209513';
+const roleId2 = '1235523396482240552';
+const roleId3 = '1235523433119617064';
+const stifflerId = '1235562033500524647';
+let members = [];
+let after = 0;
 
 // Get port, or default to 3000
 const PORT = process.env.PORT || 3000;
@@ -40,156 +47,128 @@ app.post('/interactions', async function (req, res) {
     return res.send({ type: InteractionResponseType.PONG });
   }
 
-  if(data.custom_id == 'muteAll'){
-  
-    // Get the list of members in the voice channel
-    const response = await axios.get(`https://discord.com/api/guilds/${guildId}/members`, {
-      headers: {
-        'Authorization': `Bot ${process.env.DISCORD_TOKEN}`
-      }
-    });
+    async function unmuteMember(member) {
+      try {
+        await axios.patch(`https://discord.com/api/guilds/${guildId}/members/${member.user.id}`, {
+          channel_id: channelId,
+          mute: false
+        }, {
+          headers: {
+            'Authorization': `Bot ${process.env.DISCORD_TOKEN}`
+          }
+        });
+      } catch (error) {
+        if (error.response && error.response.status === 429) {
+          const retryAfter = error.response.headers['retry-after'];
     
-    // Iterate over all members in the voice channel
-      response.data.forEach(async member => {
+          return new Promise((resolve, reject) => {
+            setTimeout(() => {
+              unmuteMember(member).then(resolve).catch(reject);
+            }, retryAfter);
+          });
+        } else {
+          throw error;
+        }
+      }
+    }
+    
+    async function muteMember(member) {
+      try {
+        await axios.patch(`https://discord.com/api/guilds/${guildId}/members/${member.user.id}`, {
+          channel_id: channelId,
+          mute: true
+        }, {
+          headers: {
+            'Authorization': `Bot ${process.env.DISCORD_TOKEN}`
+          }
+        });
+      } catch (error) {
+        if (error.response && error.response.status === 429) {
+          const retryAfter = error.response.headers['retry-after'];
+    
+          return new Promise((resolve, reject) => {
+            setTimeout(() => {
+              muteMember(member).then(resolve).catch(reject);
+            }, retryAfter);
+          });
+        } else {
+          throw error;
+        }
+      }
+    }
+    
+    if(data.custom_id == 'muteAll'){
+      members.forEach(async member => {
         if (!member.roles.includes(hostId)){
-          // Mute the member
-          await axios.patch(`https://discord.com/api/guilds/${guildId}/members/${member.user.id}`, {
-            channel_id: channelId,
-            mute: true
-          }, {
-            headers: {
-              'Authorization': `Bot ${process.env.DISCORD_TOKEN}`
-            }
-          });
+          if (member.roles.includes(stifflerId)){
+            await muteMember(member);
+            await delay(1000);
+          }
         }
       });
-  
-    return res.send({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-    });
-  }
-
-  if(data.custom_id == 'speakerTeam1'){
-    // Get the guild (server) from the interaction
-    const roleId = '1235343578239209513';
-  
-    // Get all members of the guild
-    const response = await axios.get(`https://discord.com/api/guilds/${guildId}/members`, {
-      headers: {
-        'Authorization': `Bot ${process.env.DISCORD_TOKEN}`
-      }
-    });
-    // Iterate over all members
-    response.data.forEach(async member => {
-      // Check if the member has the role
-      if (!member.roles.includes(hostId)){
-        if (!member.roles.includes(roleId)) {
-          // Mute the member
-          await axios.patch(`https://discord.com/api/guilds/${guildId}/members/${member.user.id}`, {
-            mute: true
-          }, {
-            headers: {
-              'Authorization': `Bot ${process.env.DISCORD_TOKEN}`
-            }
-          });
-        }
-      }
-    });
-
-    return res.send({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-    });
-  }
-
-  if(data.custom_id == 'speakerTeam2'){
-    // Get the guild (server) from the interaction
-    const roleId = '1235523396482240552';
-  
-    // Get all members of the guild
-    const response = await axios.get(`https://discord.com/api/guilds/${guildId}/members`, {
-      headers: {
-        'Authorization': `Bot ${process.env.DISCORD_TOKEN}`
-      }
-    });
-
-    // Iterate over all members
-    response.data.forEach(async member => {
-      // Check if the member has the role
-      if (!member.roles.includes(hostId)){
-        if (!member.roles.includes(roleId)) {
-          // Mute the member
-          await axios.patch(`https://discord.com/api/guilds/${guildId}/members/${member.user.id}`, {
-            mute: true
-          }, {
-            headers: {
-              'Authorization': `Bot ${process.env.DISCORD_TOKEN}`
-            }
-          });
-        }
-      }
-    });
-
-    return res.send({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-    });
-  }
-
-  if(data.custom_id == 'speakerTeam3'){
-    // Get the guild (server) from the interaction
-    const roleId = '1235523433119617064';
-  
-    // Get all members of the guild
-    const response = await axios.get(`https://discord.com/api/guilds/${guildId}/members`, {
-      headers: {
-        'Authorization': `Bot ${process.env.DISCORD_TOKEN}`
-      }
-    });
-
-    // Iterate over all members
-    response.data.forEach(async member => {
-      // Check if the member has the role
-      if (!member.roles.includes(hostId)){
-        if (!member.roles.includes(roleId)) {
-          // Mute the member
-          await axios.patch(`https://discord.com/api/guilds/${guildId}/members/${member.user.id}`, {
-            mute: true
-          }, {
-            headers: {
-              'Authorization': `Bot ${process.env.DISCORD_TOKEN}`
-            }
-          });
-        }
-      }
-    });
-
-    return res.send({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-    });
-  }
-
-  if(data.custom_id == 'entmuteAll'){
-    // Get the list of members in the voice channel
-    const response = await axios.get(`https://discord.com/api/guilds/${guildId}/members`, {
-      headers: {
-        'Authorization': `Bot ${process.env.DISCORD_TOKEN}`
-      }
-    });
-    // Iterate over all members in the voice channel
-    response.data.forEach(async member => {
-      // Unmute the member
-      await axios.patch(`https://discord.com/api/guilds/${guildId}/members/${member.user.id}`, {
-        channel_id: channelId,
-        mute: false
-      }, {
-        headers: {
-          'Authorization': `Bot ${process.env.DISCORD_TOKEN}`
-        }
-      });
-      });
+    
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       });
     }
+
+    if(data.custom_id == 'speakerTeam1'){
+      members.forEach(async member => {
+        if (!member.roles.includes(hostId)){
+          if (!member.roles.includes(roleId1)){
+            await muteMember(member);
+          }
+        }
+      });
+    
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      });
+    }
+    
+    if(data.custom_id == 'speakerTeam2'){
+      members.forEach(async member => {
+        if (!member.roles.includes(hostId)){
+          if (!member.roles.includes(roleId2)){
+            await muteMember(member);
+          }
+        }
+      });
+    
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      });
+    }
+  
+    if(data.custom_id == 'speakerTeam3'){
+      members.forEach(async member => {
+        if (!member.roles.includes(hostId)){
+          if (!member.roles.includes(roleId3)){
+            await muteMember(member);
+          }
+        }
+      });
+    
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      });
+    }
+  
+
+    if(data.custom_id == 'entmuteAll'){
+      members.forEach(async member => {
+        // Unmute the member
+        if (member.roles.includes(stifflerId)){
+          await unmuteMember(member);
+          await delay(1000);
+        }
+      });
+    
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      });
+    }
+
 
   /**
    * Handle slash command requests
@@ -202,6 +181,22 @@ app.post('/interactions', async function (req, res) {
       const allowedRoleId = '1235524838320508989';
       // The member who triggered the interaction
       const member = req.body.member.roles;
+      while (true) {
+        const response = await axios.get(`https://discord.com/api/guilds/${guildId}/members?limit=1000&after=${after}`, {
+          headers: {
+            'Authorization': `Bot ${process.env.DISCORD_TOKEN}`
+          }
+        });
+      
+        members = members.concat(response.data);
+      
+        if (response.data.length < 1000) {
+          break;
+        }
+      
+        after = response.data[response.data.length - 1].user.id;
+      }
+      members = members.filter(member => member.roles.includes(stifflerId));
 
       // If the interaction is not a command or was used in a direct message, member will be undefined
       if (!member) {
